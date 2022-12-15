@@ -22,8 +22,8 @@ CREATE TABLE properties (
   number_of_bedrooms INTEGER NOT NULL DEFAULT 0,
   number_of_bathrooms INTEGER NOT NULL DEFAULT 0,
   -- photos
-  thumbnail_url VARCHAR(2000),
-  cover_url VARCHAR(2000),
+  thumbnail_photo_url VARCHAR(2000),
+  cover_photo_url VARCHAR(2000),
   -- address
   country VARCHAR(255) NOT NULL,
   province VARCHAR(255),

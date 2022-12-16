@@ -118,11 +118,82 @@ exports.getAllReservations = getAllReservations;
  * @return {Promise<[{}]>}  A promise to the properties.
  */
 const getAllProperties = function(options, limit = 10) {
-  return pool
-    .query(`SELECT * FROM properties LIMIT $1`, [limit])
+  let queryParams = [limit];
+  let queryString = `
+   SELECT properties.*, AVG(property_reviews.rating) AS average_rating
+   FROM properties
+   JOIN property_reviews ON properties.id = property_id
+  `;
+  
+  //WHERE clauses to filter properties
+  if (options.city) {
+    queryParams.push(`%${options.city}%`);
+    queryString += `
+    WHERE city LIKE $${queryParams.length}
+    `;
+  }
+  
+  if (options.owner_id) {
+    queryParams.push(options.owner_id);
+    if (queryParams.length > 2) {
+      queryString += `
+      AND properties.owner_id = $${queryParams.length}
+      `;
+    } else {
+      queryString += `
+      WHERE properties.owner_id = $${queryParams.length}
+      `;
+    }
+  }
+
+  if (options.minimum_price_per_night) {
+    queryParams.push(options.minimum_price_per_night);
+    if (queryParams.length > 2) {
+      queryString += `
+      AND properties.cost_per_night / 100 >= $${queryParams.length}
+      `;
+    } else {
+      queryString += `
+      WHERE properties.cost_per_night / 100 >= $${queryParams.length}
+      `;
+    }
+  }
+
+  if (options.maximum_price_per_night) {
+    queryParams.push(options.maximum_price_per_night);
+    if (queryParams.length > 2) {
+      queryString += `
+      AND properties.cost_per_night / 100 <= $${queryParams.length}
+      `;
+    } else {
+      queryString += `
+      WHERE properties.cost_per_night / 100 <= $${queryParams.length}
+      `;
+    }
+  }
+
+  queryString += `
+  GROUP BY properties.id
+  `;
+
+  if (options.minimum_rating) {
+    queryParams.push(options.minimum_rating);
+    queryString += `
+    HAVING AVG(property_reviews.rating) >= $${queryParams.length}
+    `;
+  }
+  
+  queryString += `
+  ORDER BY cost_per_night
+  LIMIT $1;
+  `;
+  
+
+  return pool.query(queryString, queryParams)
     .then((response) => {
       // log a successful message with only the number of rows to avoid filling up too much console real estate
       console.log(`Query excuted successfully: returned ${response.rows.length} rows`);
+      console.log(queryString, queryParams);
       return response.rows;
     })
     .catch((error) => {
